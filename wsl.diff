@@ -1,0 +1,69 @@
+diff --git a/rootfs/etc/wsl.conf b/rootfs/etc/wsl.conf
+index a544c09..0388103 100644
+--- a/rootfs/etc/wsl.conf
++++ b/rootfs/etc/wsl.conf
+@@ -1,2 +1,16 @@
+ [boot]
+ systemd=true
++
++[automount]
++enabled = false
++
++[network]
++hostname = arch
++generateHosts = false
++
++[interop]
++enabled = false
++appendWindowsPath = false
++
++[user]
++default = tux
+diff --git a/scripts/build-image.sh b/scripts/build-image.sh
+index 48ce982..9da2f1d 100755
+--- a/scripts/build-image.sh
++++ b/scripts/build-image.sh
+@@ -29,7 +29,7 @@ fakechroot -- fakeroot -- \
+         --noconfirm --dbpath "$BUILDDIR/var/lib/pacman" \
+         --config "$WORKDIR/pacman.conf" \
+         --noscriptlet \
+-        --hookdir "$BUILDDIR/alpm-hooks/usr/share/libalpm/hooks/" base
++        --hookdir "$BUILDDIR/alpm-hooks/usr/share/libalpm/hooks/" base man-db base-devel git fish
+ 
+ fakechroot -- fakeroot -- chroot "$BUILDDIR" update-ca-trust
+ fakechroot -- fakeroot -- chroot "$BUILDDIR" pacman-key --init
+@@ -42,6 +42,12 @@ fakechroot -- fakeroot -- chroot "$BUILDDIR" /usr/bin/systemctl mask systemd-fir
+ ln -sf /dev/null "$BUILDDIR/etc/systemd/system/getty@.service"
+ ln -sf /dev/null "$BUILDDIR/etc/systemd/system/serial-getty@.service"
+ 
++#||tweak start||
++fakechroot -- chroot "$BUILDDIR" useradd -m -G wheel -s /usr/bin/fish tux
++echo "tux ALL=(ALL) NOPASSWD:ALL" | fakechroot -- fakeroot -- chroot "$BUILDDIR" tee -a /etc/sudoers
++ln -sf /etc/locale.conf "$BUILDDIR"/etc/default/locale
++export ZSTD_CLEVEL=19
++
+ # Remove archived repo snapshot from the mirrorlist
+ sed -i '1d' "$BUILDDIR/etc/pacman.d/mirrorlist"
+ 
+@@ -53,7 +59,6 @@ find "$BUILDDIR" -exec touch --no-dereference --date="@$SOURCE_DATE_EPOCH" {} +
+ 
+ # Use fakeroot to map the gid / uid of the builder process to root
+ # See https://gitlab.archlinux.org/archlinux/archlinux-docker/-/issues/22
+-fakeroot -- \
+     tar \
+         --numeric-owner \
+         --xattrs \
+@@ -65,11 +70,11 @@ fakeroot -- \
+         --exclude-from=scripts/exclude \
+         -C "$BUILDDIR" \
+         -c . \
++        --zstd \
+         -f "$OUTPUTDIR/archlinux-$IMAGE_VERSION.tar"
+ 
+ cd "$OUTPUTDIR"
+-xz -T0 -9 "archlinux-$IMAGE_VERSION.tar"
+-mv -v "archlinux-$IMAGE_VERSION.tar.xz" "archlinux-$IMAGE_VERSION.wsl"
++mv -v "archlinux-$IMAGE_VERSION.tar" "archlinux-$IMAGE_VERSION.wsl"
+ sha256sum "archlinux-$IMAGE_VERSION.wsl" > "archlinux-$IMAGE_VERSION.wsl.SHA256"
+ echo "The sha256 hash of the image is:"
+ cat "archlinux-$IMAGE_VERSION.wsl.SHA256"

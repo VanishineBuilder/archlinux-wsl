@@ -30,9 +30,18 @@ jobs:
             python \
             cosign
 
+      - name: Checkout current repo (for wsl.diff)
+        uses: actions/checkout@v4
+        with:
+          path: build-tools
+
       - name: Clone archlinux-wsl
         run: |
           git clone --depth=1 https://gitlab.archlinux.org/archlinux/archlinux-wsl.git .
+
+      - name: Apply wsl.diff
+        run: |
+          git apply build-tools/wsl.diff
 
       - name: Set Image Version
         id: vars
