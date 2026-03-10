@@ -32,7 +32,7 @@ jobs:
 
       - name: Clone archlinux-wsl
         run: |
-          git clone https://gitlab.archlinux.org/archlinux/archlinux-wsl.git .
+          git clone --depth=1 https://gitlab.archlinux.org/archlinux/archlinux-wsl.git .
 
       - name: Set Image Version
         id: vars
@@ -46,9 +46,13 @@ jobs:
           make build IMAGE_VERSION="${IMAGE_VERSION}"
 
       - name: Generate Checksums
+        id: checksums
         run: |
           cd workdir/output/
           sha256sum * > SHA256SUMS
+          echo "sums<<EOF" >> $GITHUB_OUTPUT
+          cat SHA256SUMS >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Verify build output
         run: |
@@ -78,7 +82,7 @@ jobs:
             
             ### Checksums
             ```text
-            $(cat workdir/output/SHA256SUMS)
+            ${{ steps.checksums.outputs.sums }}
             ```
           files: |
             workdir/output/archlinux-*.wsl*
