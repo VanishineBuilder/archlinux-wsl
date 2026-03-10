@@ -37,11 +37,12 @@ jobs:
 
       - name: Clone archlinux-wsl
         run: |
-          git clone --depth=1 https://gitlab.archlinux.org/archlinux/archlinux-wsl.git .
+          git clone --depth=1 https://gitlab.archlinux.org/archlinux/archlinux-wsl.git src
 
       - name: Apply wsl.diff
         run: |
-          git apply build-tools/wsl.diff
+          cd src
+          git apply ../build-tools/wsl.diff
 
       - name: Set Image Version
         id: vars
@@ -51,11 +52,13 @@ jobs:
           echo "IMAGE_VERSION is ${IMAGE_VERSION}"
 
       - name: Build image
+        working-directory: src
         run: |
           make build IMAGE_VERSION="${IMAGE_VERSION}"
 
       - name: Generate Checksums
         id: checksums
+        working-directory: src
         run: |
           cd workdir/output/
           sha256sum * > SHA256SUMS
@@ -64,6 +67,7 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Verify build output
+        working-directory: src
         run: |
           ls -R workdir/output/
           if [[ ! -f "workdir/output/archlinux-${IMAGE_VERSION}.wsl" ]]; then
@@ -75,7 +79,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: archlinux-wsl-${{ env.IMAGE_VERSION }}
-          path: workdir/output/*
+          path: src/workdir/output/*
           if-no-files-found: error
 
       - name: Create GitHub Release
@@ -94,7 +98,7 @@ jobs:
             ${{ steps.checksums.outputs.sums }}
             ```
           files: |
-            workdir/output/archlinux-*.wsl*
-            workdir/output/SHA256SUMS
+            src/workdir/output/archlinux-*.wsl*
+            src/workdir/output/SHA256SUMS
           draft: false
           prerelease: false
