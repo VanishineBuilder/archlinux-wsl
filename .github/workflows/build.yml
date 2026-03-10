@@ -1,0 +1,87 @@
+name: Build Arch Linux WSL Image (Standalone)
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 */2 * * *'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Allow creating Release
+    container:
+      image: archlinux:latest
+      options: --privileged
+
+    steps:
+      - name: Install dependencies
+        run: |
+          pacman -Syu --needed --noconfirm \
+            make \
+            devtools \
+            fakechroot \
+            fakeroot \
+            git \
+            python \
+            cosign
+
+      - name: Clone archlinux-wsl
+        run: |
+          git clone https://gitlab.archlinux.org/archlinux/archlinux-wsl.git .
+
+      - name: Set Image Version
+        id: vars
+        run: |
+          IMAGE_VERSION=$(date +'%Y.%m.%d').${GITHUB_RUN_ID}
+          echo "IMAGE_VERSION=${IMAGE_VERSION}" >> $GITHUB_ENV
+          echo "IMAGE_VERSION is ${IMAGE_VERSION}"
+
+      - name: Build image
+        run: |
+          make build IMAGE_VERSION="${IMAGE_VERSION}"
+
+      - name: Generate Checksums
+        run: |
+          cd workdir/output/
+          sha256sum * > SHA256SUMS
+
+      - name: Verify build output
+        run: |
+          ls -R workdir/output/
+          if [[ ! -f "workdir/output/archlinux-${IMAGE_VERSION}.wsl" ]]; then
+            echo "Build failed: output image not found"
+            exit 1
+          fi
+
+      - name: Upload WSL Image Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: archlinux-wsl-${{ env.IMAGE_VERSION }}
+          path: workdir/output/*
+          if-no-files-found: error
+
+      - name: Create GitHub Release
+        if: (github.event_name == 'push' || github.event_name == 'schedule') && github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.IMAGE_VERSION }}
+          name: Arch Linux WSL Release ${{ env.IMAGE_VERSION }}
+          body: |
+            ## Arch Linux WSL Build
+            
+            Automatically built from [archlinux-wsl](https://gitlab.archlinux.org/archlinux/archlinux-wsl).
+            
+            ### Checksums
+            ```text
+            $(cat workdir/output/SHA256SUMS)
+            ```
+          files: |
+            workdir/output/archlinux-*.wsl*
+            workdir/output/SHA256SUMS
+          draft: false
+          prerelease: false
