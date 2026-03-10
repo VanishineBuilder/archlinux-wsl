@@ -57,7 +57,7 @@ index 48ce982..9da2f1d 100755
          --exclude-from=scripts/exclude \
          -C "$BUILDDIR" \
          -c . \
-+        --zstd \
++        -I "zstd --ultra -22" \
          -f "$OUTPUTDIR/archlinux-$IMAGE_VERSION.tar"
  
  cd "$OUTPUTDIR"
