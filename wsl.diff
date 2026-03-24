@@ -28,7 +28,7 @@ index 48ce982..9da2f1d 100755
          --config "$WORKDIR/pacman.conf" \
          --noscriptlet \
 -        --hookdir "$BUILDDIR/alpm-hooks/usr/share/libalpm/hooks/" base
-+        --hookdir "$BUILDDIR/alpm-hooks/usr/share/libalpm/hooks/" base man-db base-devel git fish
++        --hookdir "$BUILDDIR/alpm-hooks/usr/share/libalpm/hooks/" base man-db base-devel git fish unzip neovim
  
  fakechroot -- fakeroot -- chroot "$BUILDDIR" update-ca-trust
  fakechroot -- fakeroot -- chroot "$BUILDDIR" pacman-key --init
